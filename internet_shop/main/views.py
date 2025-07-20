@@ -1,5 +1,5 @@
 from django.views.generic import ListView, DetailView
-from .models import ClothingItem, Category, Size
+from .models import ClothingItem, Category, Size, ClothingItemSize
 from django.db.models import Q
 
 class CatalogView(ListView):
@@ -18,7 +18,7 @@ class CatalogView(ListView):
             queryset = queryset.filter(category__slug__in=category_slugs)
 
         if size_names:
-            queryset = queryset.filter(Q(size__name__in=size_names) & Q(sizes__clothingitemsize__available=True))
+            queryset = queryset.filter(Q(sizes__name__in=size_names) & Q(sizes__clothingitemsize__available=True)).distinct()
 
         if min_price:
             queryset = queryset.filter(price__gte=min_price)
@@ -31,7 +31,7 @@ class CatalogView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['categories'] = Category.objects.all()
-        context['size'] = Size.objects.all()
+        context['sizes'] = Size.objects.all()
         context['selected_categories'] = self.request.GET.getlist('category')
         context['selected_sizes'] = self.request.GET.getlist('size')
         context['min_price'] = self.request.GET.get('min_price', '')
@@ -45,3 +45,10 @@ class ClothingItemDetailView(DetailView):
     context_object_name = 'clothing_item'
     slug_field = 'slug'
     slug_url_kwarg = 'slug'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        clothing_item = self.object
+        available_sizes = ClothingItemSize.objects.filter(clothing_item=clothing_item, available=True)
+        context['available_sizes'] = available_sizes
+        return context
